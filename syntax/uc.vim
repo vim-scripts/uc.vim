@@ -174,7 +174,8 @@ if exists("uc_space_errors")
 endif
 
 " Number in preprocesser
-syn match	ucPpNumber		display contained "\d\|\.\d"
+syn match	ucPpNumber		display contained "\<\d\+\(\.\d\+\)\="
+syn match	ucPpNumber		display contained "\<0x\x\+"
 " Number
 syn match	ucNumber		display contained "\<\d\+"
 " hex number
@@ -223,7 +224,7 @@ syntax match	ucCommentError	display "\*/"
 syntax match	ucCommentStartError display "/\*"me=e-1 contained
 
 " MicroCode Preprocessor
-syn region	ucPreCondit	start="^\s*#\s*\(if\|ifdef\|ifndef\|elif\|macro\)\>" skip="\\$" end="$" end="//"me=s-1 contains=ucPpFunc,ucComment,ucCppString,ucCppParen,ucParenError,ucNumber,ucCommentError,ucSpaceError
+syn region	ucPreCondit	start="^\s*#\s*\(if\|ifdef\|ifndef\|elif\|macro\)\>" skip="\\$" end="$" end="//"me=s-1 contains=ucPpFunc,ucComment,ucCppString,ucCppParen,ucCppBracket,ucParenError,ucNumber,ucCommentError,ucSpaceError
 syn match	ucPreCondit	display "^\s*#\s*\(else\|endif\|endm\)\>"
 " for #if 0
 if !exists("uc_no_if0")
