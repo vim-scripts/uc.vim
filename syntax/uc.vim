@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language:	Intel Network Processor Micro Code
 " Maintainer:	Gui Wei
-" Last change:	2001 May 01
+" Last change:	2004 July 18
 "
 "
 
@@ -24,8 +24,8 @@ syn keyword ucRepeat		.while .while_unsigned .endw .repeat .until .until_unsigne
 syn keyword ucToken		sig_done swap indirect indirect_ref
 syn keyword ucType		.reg .sig visible global remote automic volatile read write extern .use .use_rd .use_wr .set .set_sig .set_rd .set_wr .addr .import .xfer_order .xfer_order_rd .xfer_order_wr
 
+
 " Partial list of register symbols
-" TODO:	add the CSR list 
 syn keyword ucLocalCSR USTORE_ADDRESS
 syn keyword ucLocalCSR USTORE_DATA_LOWER
 syn keyword ucLocalCSR USTORE_DATA_UPPER
@@ -69,7 +69,10 @@ syn keyword ucLocalCSR PROFILE_COUNT
 syn keyword ucLocalCSR PSEUDO_RANDOM_NUMBER
 syn keyword ucLocalCSR LOCAL_CSR_STATUS
 
-" MicroCode opcodes - order is important!
+" MicroCode Variable -- must set before opcodes
+syn match	ucUserIdentifier	display "$\{0,2}\I\i*"
+
+" MicroCode opcodes
 syn match ucOpcode "\<SRAM\>"
 syn match ucOpcode "\<DRAM\>"
 syn match ucOpcode "\<SRATCH\>"
@@ -154,7 +157,7 @@ syn match ucOperator	"=="		" operand existance - used in macro definitions
 
 syn keyword	ucTodo		contained TODO FIXME XXX
 
-" cCommentGroup allows adding matches for special things in comments
+" ucCommentGroup allows adding matches for special things in comments
 syn cluster	ucCommentGroup	contains=ucTodo
 
 " String
@@ -173,19 +176,19 @@ syn match	ucNumber		display contained "\<0x\x\+"
 "catch errors caused by wrong parenthesis and brackets
 syn cluster	ucParenGroup	contains=ucParenError,ucIncluded,ucCommentSkip,ucCommentString,ucComment2String,@ucCommentGroup,ucCommentStartError,ucCommentSkip,ucCppOut,ucCppOut2,ucCppSkip
 syn region	ucParen		transparent start='(' end=')' contains=ALLBUT,@ucParenGroup,ucCppParen,ucErrInBracket,ucCppBracket,ucCppString
-" cCppParen: same as cParen but ends at end-of-line; used in cDefine
+" ucCppParen: same as ucParen but ends at end-of-line; used in ucDefine
 syn region	ucCppParen	transparent start='(' skip='\\$' excludenl end=')' end='$' contained contains=ALLBUT,@ucParenGroup,ucErrInBracket,ucParen,ucBracket,ucString
 syn match	ucParenError	display "[\])]"
 syn match	ucErrInParen	display contained "[\]{}]"
 syn region	ucBracket	transparent start='\[' end=']' contains=ALLBUT,@ucParenGroup,ucErrInParen,ucCppParen,ucCppBracket,ucCppString
-" cCppBracket: same as cParen but ends at end-of-line; used in cDefine
+" ucCppBracket: same as ucParen but ends at end-of-line; used in ucDefine
 syn region	ucCppBracket	transparent start='\[' skip='\\$' excludenl end=']' end='$' contained contains=ALLBUT,@ucParenGroup,ucErrInParen,ucParen,ucBracket,ucString
 syn match	ucErrInBracket	display contained "[);{}]"
 
 
-" A comment can contain cString, cCharacter and cNumber.
-" But a "*/" inside a cString in a cComment DOES end the comment!  So we
-" need to use a special type of cString: cCommentString, which also ends on
+" A comment can contain ucString, ucCharacter and ucNumber.
+" But a "*/" inside a ucString in a ucComment DOES end the comment!  So we
+" need to use a special type of ucString: ucCommentString, which also ends on
 " "*/", and sees a "*" at the start of the line as comment again.
 " Unfortunately this doesn't very well work for // type of comments :-(
 syntax match	ucCommentSkip	contained "^\s*\*\($\|\s\+\)"
@@ -210,16 +213,14 @@ syn region	ucCppSkip	contained start="^\s*#\s*\(if\>\|ifdef\>\|ifndef\>\)" skip=
 syn region	ucIncluded	display contained start=+"+ skip=+\\\\\|\\"+ end=+"+
 syn match	ucIncluded	display contained "<[^>]*>"
 syn match	ucInclude	display "^\s*#\s*include\>\s*["<]" contains=ucIncluded
-"syn match cLineSkip	"\\$"
-syn cluster	ucPreProcGroup	contains=ucPreCondit,ucIncluded,ucInclude,ucDefine,ucErrInParen,ucErrInBracket,ucUserLabel,ucCppOut,ucCppOut2,ucCppSkip,ucCommentSkip,ucCommentString,ucComment2String,@ucCommentGroup,ucCommentStartError,ucParen,ucBracket,ucMulti
+"syn match ucLineSkip	"\\$"
+syn cluster	ucPreProcGroup	contains=ucPreCondit,ucIncluded,ucInclude,ucDefine,ucErrInParen,ucErrInBracket,ucCppOut,ucCppOut2,ucCppSkip,ucCommentSkip,ucCommentString,ucComment2String,@ucCommentGroup,ucCommentStartError,ucParen,ucBracket,ucMulti,ucUserIdentifier
 syn region	ucDefine	start="^\s*#\s*\(define\|undef\)\>" skip="\\$" end="$" end="//"me=s-1 contains=ALLBUT,@ucPreProcGroup
 syn region	ucPreProc	start="^\s*#\s*\(pragma\>\|line\>\|warning\>\|warn\>\|error\>\)" skip="\\$" end="$" keepend contains=ALLBUT,@ucPreProcGroup
 
-syn match	ucUserLabel	display "\<\$\{0,2}\I\i*\>"
-"syn match	ucUserLabel	display "\<\I\i*\>"
 syn case match
 
-exec "syn sync ccomment cComment minlines=15"
+exec "syn sync minlines=15"
 
 " Define the default highlighting.
 " For version 5.7 and earlier: only when not done already
@@ -247,7 +248,7 @@ if version >= 508 || !exists("did_uc_syntax_inits")
   HiLink ucCommentL		ucComment
   HiLink ucCommentStart		ucComment
   HiLink ucLabel		Label
-  HiLink ucUserLabel		Identifier
+  HiLink ucUserIdentifier	Identifier
   HiLink ucConditional		conditional
   HiLink ucRepeat		Repeat
   HiLink ucNumber		Number
