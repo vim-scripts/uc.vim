@@ -17,13 +17,17 @@ syn case ignore
 
 
 " control keyword
-:setlocal iskeyword+=. 
+setlocal iskeyword+=. 
 syn keyword ucStatement		.break .continue .begin .end .local .endlocal .init
 syn keyword ucConditional	.if .elif .if_unsigned .elif_unsigned .else .endif
 syn keyword ucRepeat		.while .while_unsigned .endw .repeat .until .until_unsigned .break .continue
-syn keyword ucToken		sig_done swap indirect indirect_ref
-syn keyword ucType		.reg .sig visible global remote automic volatile read write extern .use .use_rd .use_wr .set .set_sig .set_rd .set_wr .addr .import .xfer_order .xfer_order_rd .xfer_order_wr
+syn keyword ucType		.reg .sig .use .use_rd .use_wr .set .set_sig .set_rd .set_wr .addr .import 
+syn keyword ucStorageClass	visible global remote automic volatile read write extern .xfer_order .xfer_order_rd .xfer_order_wr
+syn keyword ucMisc		sig_done ctx_swap ctx_arb indirect indirect_ref
 
+" MicroCode Variable -- must set before opcodes
+syn match	ucLabel "\I\i\+#"
+syn match	ucXferReg	display "$\{1,2}\I\i*"
 
 " Partial list of register symbols
 syn keyword ucLocalCSR USTORE_ADDRESS
@@ -69,8 +73,6 @@ syn keyword ucLocalCSR PROFILE_COUNT
 syn keyword ucLocalCSR PSEUDO_RANDOM_NUMBER
 syn keyword ucLocalCSR LOCAL_CSR_STATUS
 
-" MicroCode Variable -- must set before opcodes
-syn match	ucUserIdentifier	display "$\{0,2}\I\i*"
 
 " MicroCode opcodes
 syn match ucOpcode "\<SRAM\>"
@@ -144,16 +146,12 @@ syn match ucPpFunc      contained "\<log2\>"
 syn match ucPpFunc      contained "\<mask\>"
 
 syn match ucOperator	"[-+*/]"	" Must occur before Comments
-syn match ucOperator	"<<"		" shift left
-syn match ucOperator	">>"		" shift right
-syn match ucOperator	"&"		" bit-wise logical and
+syn match ucOperator	"<"
+syn match ucOperator	">"
+syn match ucOperator	"&"
+syn match ucOperator	"!"
 syn match ucOperator	"!"		" bit-wise logical or
-syn match ucOperator	"!!"		" exclusive or
-syn match ucOperator	"<>"		" inequality
 syn match ucOperator	"="		" must be before other ops containing '='
-syn match ucOperator	">="
-syn match ucOperator	"<="
-syn match ucOperator	"=="		" operand existance - used in macro definitions
 
 syn keyword	ucTodo		contained TODO FIXME XXX
 
@@ -165,9 +163,18 @@ syn region ucString	start=+"+ skip=+\\\\\|\\"+ end=+"+
 syn region ucString	start=+'+ skip=+\\\\\|''+ end=+'+ 
 syn region ucCppString	start=+"+ skip=+\\\\\|\\"\|\\$+ excludenl end=+"+ end='$'
 
-" no trailing space error
-syn match	ucSpaceError	display excludenl "\s\+$"
+"when wanted, highlight trailing white space
+if exists("uc_space_errors")
+  if !exists("uc_no_trail_space_error")
+    syn match	ucSpaceError	display excludenl "\s\+$"
+  endif
+  if !exists("uc_no_tab_space_error")
+    syn match	ucSpaceError	display " \+\t"me=e-1
+  endif
+endif
 
+" Number in preprocesser
+syn match	ucPpNumber		display contained "\d\|\.\d"
 " Number
 syn match	ucNumber		display contained "\<\d\+"
 " hex number
@@ -175,41 +182,55 @@ syn match	ucNumber		display contained "\<0x\x\+"
 
 "catch errors caused by wrong parenthesis and brackets
 syn cluster	ucParenGroup	contains=ucParenError,ucIncluded,ucCommentSkip,ucCommentString,ucComment2String,@ucCommentGroup,ucCommentStartError,ucCommentSkip,ucCppOut,ucCppOut2,ucCppSkip
-syn region	ucParen		transparent start='(' end=')' contains=ALLBUT,@ucParenGroup,ucCppParen,ucErrInBracket,ucCppBracket,ucCppString
-" ucCppParen: same as ucParen but ends at end-of-line; used in ucDefine
-syn region	ucCppParen	transparent start='(' skip='\\$' excludenl end=')' end='$' contained contains=ALLBUT,@ucParenGroup,ucErrInBracket,ucParen,ucBracket,ucString
-syn match	ucParenError	display "[\])]"
-syn match	ucErrInParen	display contained "[\]{}]"
-syn region	ucBracket	transparent start='\[' end=']' contains=ALLBUT,@ucParenGroup,ucErrInParen,ucCppParen,ucCppBracket,ucCppString
-" ucCppBracket: same as ucParen but ends at end-of-line; used in ucDefine
-syn region	ucCppBracket	transparent start='\[' skip='\\$' excludenl end=']' end='$' contained contains=ALLBUT,@ucParenGroup,ucErrInParen,ucParen,ucBracket,ucString
-syn match	ucErrInBracket	display contained "[);{}]"
+if exists("uc_no_bracket_error")
+  syn region	ucParen		transparent start='(' end=')' contains=ALLBUT,@ucParenGroup,ucCppParen,ucCppString
+  " ucCppParen: same as cParen but ends at end-of-line; used in cDefine
+  syn region	ucCppParen	transparent start='(' skip='\\$' excludenl end=')' end='$' contained contains=ALLBUT,@ucParenGroup,ucParen,ucString
+  syn match	ucParenError	display ")"
+  syn match	ucErrInParen	display contained "[{}]"
+else
+  syn region	ucParen		transparent start='(' end=')' contains=ALLBUT,@ucParenGroup,ucCppParen,ucErrInBracket,ucCppBracket,ucCppString
+  " ucCppParen: same as ucParen but ends at end-of-line; used in ucDefine
+  syn region	ucCppParen	transparent start='(' skip='\\$' excludenl end=')' end='$' contained contains=ALLBUT,@ucParenGroup,ucErrInBracket,ucParen,ucBracket,ucString
+  syn match	ucParenError	display "[\])]"
+  syn match	ucErrInParen	display contained "[\]{}]"
+  syn region	ucBracket	transparent start='\[' end=']' contains=ALLBUT,@ucParenGroup,ucErrInParen,ucCppParen,ucCppBracket,ucCppString
+  " ucCppBracket: same as ucParen but ends at end-of-line; used in ucDefine
+  syn region	ucCppBracket	transparent start='\[' skip='\\$' excludenl end=']' end='$' contained contains=ALLBUT,@ucParenGroup,ucErrInParen,ucParen,ucBracket,ucString
+  syn match	ucErrInBracket	display contained "[);{}]"
+endif
 
-
-" A comment can contain ucString, ucCharacter and ucNumber.
-" But a "*/" inside a ucString in a ucComment DOES end the comment!  So we
-" need to use a special type of ucString: ucCommentString, which also ends on
-" "*/", and sees a "*" at the start of the line as comment again.
-" Unfortunately this doesn't very well work for // type of comments :-(
-syntax match	ucCommentSkip	contained "^\s*\*\($\|\s\+\)"
-syntax region	ucCommentString	contained start=+\\\@<!"+ skip=+\\\\\|\\"+ end=+"+ end=+\*/+me=s-1 contains=ucCommentSkip
-syntax region	ucComment2String	contained start=+\\\@<!"+ skip=+\\\\\|\\"+ end=+"+ end="$"
-syntax region	ucCommentL	start="//" skip="\\$" end="$" keepend contains=@ucCommentGroup,ucComment2String,ucNumber,ucSpaceError
-syntax region	ucCommentL	start=";" skip="\\$" end="$" keepend contains=@ucCommentGroup,ucComment2String,ucNumber,ucSpaceError
-syntax region	ucComment	matchgroup=ucCommentStart start="/\*" end="\*/" contains=@ucCommentGroup,ucCommentStartError,ucCommentString,ucNumber,ucSpaceError
+if exists("c_comment_strings")
+  " A comment can contain ucString, ucCharacter and ucNumber.
+  " But a "*/" inside a ucString in a ucComment DOES end the comment!  So we
+  " need to use a special type of ucString: ucCommentString, which also ends on
+  " "*/", and sees a "*" at the start of the line as comment again.
+  " Unfortunately this doesn't very well work for // type of comments :-(
+  syntax match	ucCommentSkip	contained "^\s*\*\($\|\s\+\)"
+  syntax region	ucCommentString	contained start=+\\\@<!"+ skip=+\\\\\|\\"+ end=+"+ end=+\*/+me=s-1 contains=ucCommentSkip
+  syntax region	ucComment2String	contained start=+\\\@<!"+ skip=+\\\\\|\\"+ end=+"+ end="$"
+  syntax region	ucCommentL	start="//" skip="\\$" end="$" keepend contains=@ucCommentGroup,ucComment2String,ucPpNumber,ucSpaceError
+  syntax region	ucCommentL	start=";" skip="\\$" end="$" keepend contains=@ucCommentGroup,ucComment2String,ucPpNumber,ucSpaceError
+  syntax region	ucComment	matchgroup=ucCommentStart start="/\*" end="\*/" contains=@ucCommentGroup,ucCommentStartError,ucCommentString,ucPpNumber,ucSpaceError
+else
+  syn region	ucCommentL	start="//" skip="\\$" end="$" keepend contains=@ucCommentGroup,ucPpNumber,ucSpaceError
+  syntax region	ucCommentL	start=";" skip="\\$" end="$" keepend contains=@ucCommentGroup,ucPpNumber,ucSpaceError
+  syn region	ucComment	matchgroup=ucCommentStart start="/\*" end="\*/" contains=@ucCommentGroup,ucCommentStartError,ucSpaceError
+endif
 
 " keep a // comment separately, it terminates a preproc. conditional
 syntax match	ucCommentError	display "\*/"
 syntax match	ucCommentStartError display "/\*"me=e-1 contained
 
 " MicroCode Preprocessor
-syn region	ucPreCondit	start="^\s*#\s*\(if\|ifdef\|ifndef\|elif\)\>" skip="\\$" end="$" end="//"me=s-1 contains=ucPpFunc,ucComment,ucCppString,ucCppParen,ucParenError,ucNumber,ucCommentError,ucSpaceError
-syn match	ucPreCondit	display "^\s*#\s*\(else\|endif\)\>"
+syn region	ucPreCondit	start="^\s*#\s*\(if\|ifdef\|ifndef\|elif\|macro\)\>" skip="\\$" end="$" end="//"me=s-1 contains=ucPpFunc,ucComment,ucCppString,ucCppParen,ucParenError,ucNumber,ucCommentError,ucSpaceError
+syn match	ucPreCondit	display "^\s*#\s*\(else\|endif\|endm\)\>"
 " for #if 0
-syn region	ucCppOut	start="^\s*#\s*if\s\+0\+\>" end=".\@=\|$" contains=ucCppOut2
-syn region	ucCppOut2	contained start="0" end="^\s*#\s*\(endif\>\|else\>\|elif\>\)" contains=ucSpaceError,ucCppSkip
-syn region	ucCppSkip	contained start="^\s*#\s*\(if\>\|ifdef\>\|ifndef\>\)" skip="\\$" end="^\s*#\s*endif\>" contains=ucSpaceError,ucCppSkip
-
+if !exists("uc_no_if0")
+  syn region	ucCppOut	start="^\s*#\s*if\s\+0\+\>" end=".\@=\|$" contains=ucCppOut2
+  syn region	ucCppOut2	contained start="0" end="^\s*#\s*\(endif\>\|else\>\|elif\>\)" contains=ucSpaceError,ucCppSkip
+  syn region	ucCppSkip	contained start="^\s*#\s*\(if\>\|ifdef\>\|ifndef\>\)" skip="\\$" end="^\s*#\s*endif\>" contains=ucSpaceError,ucCppSkip
+endif
 syn region	ucIncluded	display contained start=+"+ skip=+\\\\\|\\"+ end=+"+
 syn match	ucIncluded	display contained "<[^>]*>"
 syn match	ucInclude	display "^\s*#\s*include\>\s*["<]" contains=ucIncluded
@@ -217,6 +238,7 @@ syn match	ucInclude	display "^\s*#\s*include\>\s*["<]" contains=ucIncluded
 syn cluster	ucPreProcGroup	contains=ucPreCondit,ucIncluded,ucInclude,ucDefine,ucErrInParen,ucErrInBracket,ucCppOut,ucCppOut2,ucCppSkip,ucCommentSkip,ucCommentString,ucComment2String,@ucCommentGroup,ucCommentStartError,ucParen,ucBracket,ucMulti,ucUserIdentifier
 syn region	ucDefine	start="^\s*#\s*\(define\|undef\)\>" skip="\\$" end="$" end="//"me=s-1 contains=ALLBUT,@ucPreProcGroup
 syn region	ucPreProc	start="^\s*#\s*\(pragma\>\|line\>\|warning\>\|warn\>\|error\>\)" skip="\\$" end="$" keepend contains=ALLBUT,@ucPreProcGroup
+
 
 syn case match
 
@@ -243,15 +265,15 @@ if version >= 508 || !exists("did_uc_syntax_inits")
   " Statement		Conditional Exception Keyword Label Operator Repeat
   " Type		StorageClass Structure Typedef
 
-  HiLink ucLocalCSR		Label
   HiLink ucCppString		ucString
-  HiLink ucCommentL		ucComment
-  HiLink ucCommentStart		ucComment
-  HiLink ucLabel		Label
-  HiLink ucUserIdentifier	Identifier
-  HiLink ucConditional		conditional
-  HiLink ucRepeat		Repeat
+  HiLink ucIncluded		ucString
+  HiLink ucCommentString	ucString
+  HiLink ucComment2String	ucString
+  HiLink ucString		String
+
   HiLink ucNumber		Number
+  HiLink ucPpNumber		Number
+
   HiLink ucParenError		ucError
   HiLink ucErrInParen		ucError
   HiLink ucErrInBracket		ucError
@@ -259,28 +281,35 @@ if version >= 508 || !exists("did_uc_syntax_inits")
   HiLink ucCommentStartError	ucError
   HiLink ucSpaceError		ucError
   HiLink ucSpecialError		ucError
-  HiLink ucOperator		Statement
-  HiLink ucOpcode		Statement
-  HiLink ucStructure		Structure
-  HiLink ucStorageClass		StorageClass
+  HiLink ucError		Error
+
+  HiLink ucCppSkip		ucCppOut
+  HiLink ucCppOut2		ucCppOut
+  HiLink ucCppOut		ucComment
+
+  HiLink ucCommentL		ucComment
+  HiLink ucCommentStart		ucComment
+  HiLink ucCommentSkip		ucComment
+  HiLink ucComment		Comment
+
+  HiLink ucTodo			Todo
+
   HiLink ucInclude		Include
   HiLink ucPreProc		PreProc
   HiLink ucDefine		Macro
-  HiLink ucIncluded		ucString
-  HiLink ucError		Error
-  HiLink ucStatement		Statement
   HiLink ucPreCondit		PreCondit
-  HiLink ucPreCondit		Operator
+
+  HiLink ucLocalCSR		Label
+  HiLink ucLabel		Label
+  HiLink ucXferReg		Identifier
+  HiLink ucConditional		conditional
+  HiLink ucRepeat		Repeat
+  HiLink ucOperator		Statement
+  HiLink ucOpcode		Statement
+  HiLink ucMisc			Statement
+  HiLink ucStorageClass		StorageClass
+  HiLink ucStatement		Statement
   HiLink ucType			Type
-  HiLink ucCommentString	ucString
-  HiLink ucComment2String	ucString
-  HiLink ucCommentSkip		ucComment
-  HiLink ucString		String
-  HiLink ucComment		Comment
-  HiLink ucTodo			Todo
-  HiLink ucCppSkip		ucCppOut
-  HiLink ucCppOut2		ucCppOut
-  HiLink ucCppOut		Comment
 
   delcommand HiLink
 endif
